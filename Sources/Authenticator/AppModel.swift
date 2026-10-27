@@ -27,7 +27,7 @@ struct AppAlert: Identifiable {
 
 @MainActor
 final class AppModel: ObservableObject {
-    static let keychainService = "org.sinoussi.authenticator"
+    static let keychainService = "com.baiehclaca.authenticator"
 
     @Published private(set) var vault = AccountVault()
     @Published var isLocked: Bool

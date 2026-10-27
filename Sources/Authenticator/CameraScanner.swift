@@ -19,18 +19,29 @@ final class CameraScanner: NSObject, ObservableObject, AVCaptureVideoDataOutputS
     /// Set (on the main thread) when an `otpauth…` QR code is seen.
     @Published var detectedPayload: String?
 
-    private let queue = DispatchQueue(label: "org.sinoussi.authenticator.camera")
+    private let queue = DispatchQueue(label: "com.baiehclaca.authenticator.camera")
     private var lastAnalysis = Date.distantPast // accessed on `queue` only
     private var isConfigured = false             // accessed on `queue` only
+    /// True while a detected payload awaits a decision; frames are skipped meanwhile.
+    private var hasPendingPayload = false        // accessed on `queue` only
+    /// Whether the scan view still wants the camera (main thread only). Guards the
+    /// async permission callback from starting the camera after the sheet closed.
+    private var wantsRunning = false
 
     func start() {
+        wantsRunning = true
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             configureAndRun()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 DispatchQueue.main.async {
-                    if granted { self?.configureAndRun() } else { self?.state = .denied }
+                    guard let self else { return }
+                    if !granted {
+                        self.state = .denied
+                    } else if self.wantsRunning {
+                        self.configureAndRun()
+                    }
                 }
             }
         default:
@@ -39,6 +50,7 @@ final class CameraScanner: NSObject, ObservableObject, AVCaptureVideoDataOutputS
     }
 
     func stop() {
+        wantsRunning = false
         queue.async { [session] in
             if session.isRunning { session.stopRunning() }
         }
@@ -47,6 +59,15 @@ final class CameraScanner: NSObject, ObservableObject, AVCaptureVideoDataOutputS
     /// Resume scanning after a payload was rejected.
     func resume() {
         detectedPayload = nil
+        queue.async { [weak self] in self?.hasPendingPayload = false }
+    }
+
+    deinit {
+        // Never leave the camera (and its green light) running once the scanner is gone.
+        let session = self.session
+        queue.async {
+            if session.isRunning { session.stopRunning() }
+        }
     }
 
     private func configureAndRun() {
@@ -97,6 +118,8 @@ final class CameraScanner: NSObject, ObservableObject, AVCaptureVideoDataOutputS
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
+        // Don't run Vision while a found code is waiting to be accepted/rejected.
+        guard !hasPendingPayload else { return }
         let now = Date()
         guard now.timeIntervalSince(lastAnalysis) > 0.15 else { return }
         lastAnalysis = now
@@ -110,6 +133,7 @@ final class CameraScanner: NSObject, ObservableObject, AVCaptureVideoDataOutputS
             .compactMap { $0.payloadStringValue }
             .first { $0.lowercased().hasPrefix("otpauth") }
         guard let payload else { return }
+        hasPendingPayload = true
         DispatchQueue.main.async { [weak self] in
             guard let self, self.detectedPayload == nil else { return }
             self.detectedPayload = payload

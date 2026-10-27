@@ -57,6 +57,7 @@ struct ContentView: View {
         }
         .overlay(alignment: .bottom) { bannerView }
         .animation(.easeInOut(duration: 0.2), value: model.banner)
+        .pausesCodesWhenHidden()
     }
 
     // MARK: - List

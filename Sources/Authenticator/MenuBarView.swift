@@ -56,6 +56,8 @@ struct MenuBarView: View {
             .padding(10)
         }
         .frame(width: 320)
+        // The menu bar panel stays alive after it closes; stop the codes ticking then.
+        .pausesCodesWhenHidden()
     }
 }
 

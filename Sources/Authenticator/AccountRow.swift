@@ -63,11 +63,14 @@ struct AccountRow: View {
 struct LiveCode: View {
     let account: OTPAccount
     var size: CGFloat = 30
+    @Environment(\.codesPaused) private var paused
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.5)) { context in
-            let code = account.code(at: context.date)
-            let expiring = account.secondsRemaining(at: context.date) <= 5
+        // Redraws only when the code changes or enters its last 5 s (not every 0.5 s),
+        // and not at all while the window is hidden. The code itself is cached per period.
+        TimelineView(CodeTimelineSchedule(cadence: .codeChanges(period: account.period), isPaused: paused)) { context in
+            let code = CodeCache.code(for: account, at: context.date)
+            let expiring = account.secondsRemaining(at: context.date) <= CodeTimelineSchedule.expiringThreshold
             Text(OTP.formatted(code))
                 .font(.system(size: size, weight: .medium, design: .monospaced))
                 .foregroundStyle(expiring ? Color.red : Color.accentColor)
@@ -82,9 +85,12 @@ struct LiveCode: View {
 struct LiveCountdown: View {
     let account: OTPAccount
     var diameter: CGFloat = 30
+    @Environment(\.codesPaused) private var paused
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 15.0)) { context in
+        // Once per second (aligned to whole seconds) instead of a 15 fps animation
+        // timeline per row; paused entirely while the window isn't visible.
+        TimelineView(CodeTimelineSchedule(cadence: .everySecond, isPaused: paused)) { context in
             CountdownRing(remaining: account.secondsRemaining(at: context.date), period: account.period, diameter: diameter)
         }
     }

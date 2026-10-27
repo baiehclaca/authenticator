@@ -4,7 +4,7 @@
 
 A small native macOS 2FA (TOTP) authenticator in the spirit of Google Authenticator, written in Swift + SwiftUI.
 
-- **Bundle id:** `org.sinoussi.authenticator`
+- **Bundle id:** `com.baiehclaca.authenticator`
 - **Requires:** macOS 14 Sonoma or later, Apple Silicon. Built with Swift 6.x / Xcode 16+.
 
 ## Features
@@ -52,7 +52,7 @@ To use a real signing identity, run `SIGN_IDENTITY="Developer ID Application: �
 You can also open `Package.swift` in Xcode (File › Open…) and run the `Authenticator` scheme.
 
 ### Notes
-- **Keychain prompts:** secrets are stored as a single generic-password item (service `org.sinoussi.authenticator`, account `vault`) in the login keychain. Ad-hoc signed builds get a new code signature on every rebuild, so macOS may ask once per build whether Authenticator can use the keychain item. Choose **Always Allow**. Signing with a stable identity avoids this. If reading the keychain fails, the app refuses to save, so it never overwrites your existing accounts.
+- **Keychain prompts:** secrets are stored as a single generic-password item (service `com.baiehclaca.authenticator`, account `vault`) in the login keychain. Ad-hoc signed builds get a new code signature on every rebuild, so macOS may ask once per build whether Authenticator can use the keychain item. Choose **Always Allow**. Signing with a stable identity avoids this. If reading the keychain fails, the app refuses to save, so it never overwrites your existing accounts.
 - **Screen scanning** needs Screen Recording permission (System Settings › Privacy & Security › Screen & System Audio Recording). On first use the app asks for it. After you grant it you may need to relaunch. With `swift run`, the permission belongs to your terminal app, not to Authenticator.
 - `swift run` sets the activation policy to `.regular` and embeds `Support/Info.plist` into the binary, so the bare executable gets a Dock icon, a menu bar and a bundle id. URL-scheme handling needs the `.app` bundle.
 
